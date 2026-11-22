@@ -54,6 +54,17 @@ const roleOf = k => {
   return (effectiveOwnerKey && same(k, effectiveOwnerKey)) ? 'owner' : (STAFF_KEY && same(k, STAFF_KEY)) ? 'staff' : (VIEW_KEY && same(k, VIEW_KEY)) ? 'view' : null;
 };
 
+// The visitor's address, for counting wrong keys. On Vercel, requests reach the function through Vercel's proxy,
+// so the connection address is not the visitor's. Vercel writes the visitor's address into x-forwarded-for and
+// overwrites any value the visitor sent, so the header is trusted there. Anywhere else a visitor could fake it.
+const clientIp = req => {
+  if (process.env.VERCEL) {
+    const first = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    if (first) return first;
+  }
+  return req.socket.remoteAddress;
+};
+
 // slow down key guessing: 30 wrong keys per 10 minutes per address
 const bad = new Map();
 const blocked = ip => { const r = bad.get(ip); return r && r.n >= 30 && Date.now() - r.t < 600000; };
@@ -63,7 +74,7 @@ const json = (res, code, obj) => { res.writeHead(code, { 'content-type': 'applic
 
 // Returns the caller's role, or sends 429/401 and returns null.
 function authorize(req, res) {
-  const ip = req.socket.remoteAddress;
+  const ip = clientIp(req);
   if (blocked(ip)) { json(res, 429, { error: 'Too many wrong keys. Try again later.' }); return null; }
   const role = roleOf(req.headers['x-api-key'] || '');
   if (!role) { fail(ip); json(res, 401, { error: 'Invalid key' }); return null; }
