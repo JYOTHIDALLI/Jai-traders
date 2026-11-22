@@ -37,8 +37,9 @@ const ID = /^[A-Za-z0-9_-]{1,80}$/;
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
+// A missing or empty key is no role at all, never the owner.
 const roleOf = k => {
-  if (!k) return 'owner';
+  if (!k) return null;
   return same(k, effectiveOwnerKey) ? 'owner' : (STAFF_KEY && same(k, STAFF_KEY)) ? 'staff' : (VIEW_KEY && same(k, VIEW_KEY)) ? 'view' : null;
 };
 
@@ -48,6 +49,15 @@ const blocked = ip => { const r = bad.get(ip); return r && r.n >= 30 && Date.now
 const fail = ip => { const r = bad.get(ip); if (!r || Date.now() - r.t > 600000) bad.set(ip, { n: 1, t: Date.now() }); else r.n++; };
 
 const json = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
+
+// Returns the caller's role, or sends 429/401 and returns null.
+function authorize(req, res) {
+  const ip = req.socket.remoteAddress;
+  if (blocked(ip)) { json(res, 429, { error: 'Too many wrong keys. Try again later.' }); return null; }
+  const role = roleOf(req.headers['x-api-key'] || '');
+  if (!role) { fail(ip); json(res, 401, { error: 'Invalid key' }); return null; }
+  return role;
+}
 const readBody = req => new Promise((ok, no) => {
   let d = ''; req.on('data', c => { d += c; if (d.length > 400000) { no(new Error('Too big')); req.destroy(); } });
   req.on('end', () => { try { ok(d ? JSON.parse(d) : {}); } catch (e) { no(e); } });
@@ -66,10 +76,8 @@ function allowedWrite(role, col) {
 }
 
 async function api(req, res, parts) {
-  const ip = req.socket.remoteAddress;
-  if (blocked(ip)) return json(res, 429, { error: 'Too many wrong keys. Try again later.' });
-  const role = roleOf(req.headers['x-api-key'] || '');
-  if (!role) { fail(ip); return json(res, 401, { error: 'Invalid key' }); }
+  const role = authorize(req, res);
+  if (!role) return;
   if (parts[1] === 'whoami') return json(res, 200, { role });
   if (parts[1] === 'audit') {
     if (role !== 'owner') return json(res, 403, { error: 'Only the owner can read the server log' });
@@ -153,7 +161,8 @@ async function handler(req, res) {
   try {
     const u = new URL(req.url, 'http://x'), parts = u.pathname.split('/').filter(Boolean);
     if (parts[0] === 'api') {
-      if (parts[1] === 'whoami') return json(res, 200, { role: roleOf(req.headers['x-api-key'] || '') || 'owner' });
+      // whoami answers before the database connects, so the app can check a key even when Atlas is down.
+      if (parts[1] === 'whoami') { const role = authorize(req, res); if (role) json(res, 200, { role }); return; }
       try {
         await ensureDatabase();
         return await api(req, res, parts);

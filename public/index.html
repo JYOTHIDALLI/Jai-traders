@@ -69,9 +69,18 @@ body.r-staff input[onchange^="so("],body.r-staff input[onchange^="sa("],body.r-s
 <script>
 /* Connects the app to the server (and so to MongoDB Atlas). Replaces the claude.ai cloud. */
 (function(){
- var KEY='',ROLE='owner';
- localStorage.removeItem('gl-key');
- var H=function(){return{'content-type':'application/json'}};
+ var KEY=localStorage.getItem('gl-key')||'',ROLE='',ready=null;
+ var H=function(){return{'content-type':'application/json','x-api-key':KEY}};
+ /* Asks for the key, checks it with the server and keeps it on this device. No valid key: the app uses only this device's data. */
+ function login(){return ready=ready||(async function(){try{
+  for(var i=0;i<3;i++){
+   if(!KEY){var k=prompt('Type your Godown key (owner, staff or viewer).\nPress Cancel to use only the data saved on this device.');if(!k||!k.trim())return false;KEY=k.trim()}
+   var r=await fetch('/api/whoami',{headers:H()});
+   if(r.ok){ROLE=(await r.json()).role;localStorage.setItem('gl-key',KEY);return true}
+   if(r.status===429){alert('Too many wrong keys from this address. Try again in 10 minutes.');return false}
+   if(r.status!==401)return false;
+   localStorage.removeItem('gl-key');KEY='';alert('That key is not right.')}
+  return false}catch(e){return false}})()}
  async function call(m,p,b){var r=await fetch('/api/data/'+p,{method:m,headers:H(),body:b===undefined?undefined:JSON.stringify(b)});
   if(r.status===401){localStorage.removeItem('gl-key');location.reload()}
   if(!r.ok){var j={};try{j=await r.json()}catch(e){}var e=new Error(j.error||r.status);e.code=j.error||String(r.status);throw e}return r.json()}
@@ -95,6 +104,7 @@ body.r-staff input[onchange^="so("],body.r-staff input[onchange^="sa("],body.r-s
    delete:async function(){await call('DELETE',c+'/'+id);poll(c).catch(function(){})},
    onSnapshot:function(cb,er){listen(c,function(a){var x=a.find(function(d){return d.id===id});cb({exists:!!x,data:function(){return x&&cp(x)},metadata:{fromCache:false}})},er);return function(){}}}}};
  window.claude={use:async function(n){
+  if(!await login())return null;
   if(n==='user')return{id:async function(){return ROLE+'-user'},isOwner:async function(){return ROLE==='owner'},canEdit:async function(){return false},can:async function(){return ROLE!=='view'}};
   if(n==='db')return DBA;return null}};
 })();
