@@ -97,6 +97,76 @@ function allowedWrite(role, col) {
   return false;
 }
 
+// ---- What a saved record may contain. Anything else is refused with 400 and a plain-language reason, which the
+// app shows as "Sync problem (...)". The rules match the fields the app itself writes.
+const GRADES = ['AAAA', 'AAA', 'AA', 'A', 'Kali'], MOVE_TYPES = ['dispatch', 'return', 'inward'], PAY_MODES = ['Cash', 'UPI'];
+const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+const MAX_KG = 1e6, MAX_RATE = 1e5, MAX_RUPEES = 1e8, MAX_TIME = 1e13;
+const NAMES = { cust: 'Customer', moves: 'Stock entry', sales: 'Sale', pays: 'Payment', cfg: 'Settings', backup: 'Backup', auditlog: 'Log entry' };
+const LABELS = { qty: 'quantity', price: 'price per kg', paid: 'paid amount', amt: 'amount', cid: 'customer', open: 'old pending',
+  cost: 'cost per kg', loc: 'place', addr: 'address', mode: 'payment mode', v: 'schedule', t: 'time', a: 'text', l: 'line name', o: 'starting credit' };
+
+const isNum = v => typeof v === 'number' && Number.isFinite(v);
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+const inr = n => n.toLocaleString('en-IN');
+const missing = v => v === undefined || v === null;
+// Each rule returns '' when the value is fine, otherwise the problem.
+const text = (max, required) => v => missing(v) || v === '' ? (required ? 'is required' : '')
+  : typeof v !== 'string' ? 'must be text' : required && !v.trim() ? 'is required'
+  : v.length > max ? `must be ${max} characters or fewer` : /[\u0000-\u001f\u007f]/.test(v) ? 'has invalid characters' : '';
+const num = (min, max, above) => v => missing(v) ? 'is required' : !isNum(v) ? 'must be a number'
+  : above ? (v > min ? (v <= max ? '' : `must be ${inr(max)} or less`) : `must be above ${inr(min)}`)
+  : v < min ? `must be at least ${inr(min)}` : v > max ? `must be ${inr(max)} or less` : '';
+const optional = rule => v => missing(v) ? '' : rule(v);
+const oneOf = list => v => missing(v) ? 'is required' : list.includes(v) ? '' : 'must be one of ' + list.join(', ');
+const date = v => {
+  if (missing(v) || v === '') return 'is required';
+  const d = typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(v + 'T00:00:00Z') : null;
+  if (!d || isNaN(d) || d.toISOString().slice(0, 10) !== v || v < '2000-01-01') return 'must be a real date (YYYY-MM-DD)';
+  return d.getTime() > Date.now() + 366 * 864e5 ? 'is more than a year ahead' : '';
+};
+const phone = v => text(30)(v) || (v && !/^[0-9+\-\s()\/,.]*$/.test(v) ? 'may only contain digits, spaces and + - ( ) / , .' : '');
+const custId = v => missing(v) || v === '' ? 'is required' : typeof v === 'string' && ID.test(v) ? '' : 'is not a valid customer';
+const schedule = v => {
+  if (!isObj(v)) return 'must be an object';
+  for (const [day, x] of Object.entries(v)) {
+    if (!DAYS.includes(day)) return `has an unknown day ${JSON.stringify(day.slice(0, 20))}`;
+    if (!isObj(x) || Object.keys(x).some(k => k !== 'l' && k !== 'o')) return `for ${day} must have only a line name and starting credit`;
+    const p = text(50)(x.l) || (missing(x.l) ? 'is required' : '');
+    if (p) return `line name for ${day} ${p}`;
+    const q = num(-MAX_RUPEES, MAX_RUPEES)(x.o);
+    if (q) return `starting credit for ${day} ${q}`;
+  }
+  return '';
+};
+const SYNC_FIELDS = { ts: optional(num(0, MAX_TIME)), by: text(40), h: text(40) }; // added by the app when it syncs
+const SHAPES = {
+  cust: { name: text(100, true), route: text(50, true), loc: text(100), addr: text(300), phone, open: optional(num(-MAX_RUPEES, MAX_RUPEES)), ...SYNC_FIELDS },
+  moves: { type: oneOf(MOVE_TYPES), date, grade: oneOf(GRADES), qty: num(0, MAX_KG, true), route: text(50), cost: optional(num(0, MAX_RATE)), ...SYNC_FIELDS },
+  sales: { date, cid: custId, grade: oneOf(GRADES), qty: num(0, MAX_KG, true), price: num(0, MAX_RATE, true), paid: num(0, MAX_RUPEES), mode: oneOf(PAY_MODES), ...SYNC_FIELDS },
+  pays: { date, cid: custId, amt: num(0, MAX_RUPEES, true), mode: oneOf(PAY_MODES), ...SYNC_FIELDS },
+  auditlog: { t: num(0, MAX_TIME), a: text(300, true), w: optional(oneOf([0, 1])), u: text(40) },
+};
+function shapeOf(col, id) {
+  if (col === 'cfg') return id === 'sched' ? { v: schedule } : id === 'meta' ? { t: num(0, MAX_TIME) } : null;
+  if (col === 'backup') {
+    if (id === 'meta') return { n: v => Number.isInteger(v) && v >= 1 && v <= 1000 ? '' : 'must be a whole number from 1 to 1000', t: num(0, MAX_TIME), by: text(40) };
+    const part = /^c(\d{1,4})$/.exec(id);
+    return part ? { i: v => v === Number(part[1]) ? '' : 'must match the part number', d: v => typeof v === 'string' && v.length <= 60000 ? '' : 'must be text of at most 60000 characters' } : null;
+  }
+  return SHAPES[col];
+}
+// Returns null when the record may be saved, otherwise the reason it cannot.
+async function invalid(col, id, body) {
+  const name = NAMES[col], shape = shapeOf(col, id);
+  if (!shape) return `${name}: unknown record ${JSON.stringify(id)}`;
+  for (const k of Object.keys(body)) if (!(k in shape)) return `${name}: unknown field ${JSON.stringify(k.slice(0, 40))}`;
+  for (const [k, rule] of Object.entries(shape)) { const p = rule(body[k]); if (p) return `${name}: ${LABELS[k] || k} ${p}`; }
+  if (col === 'moves' && body.type !== 'inward' && !(body.route || '').trim()) return `${name}: route is required for a dispatch or return`;
+  if ((col === 'sales' || col === 'pays') && !(await db.collection('cust').findOne({ _id: body.cid }, { projection: { _id: 1 } }))) return `${name}: customer not found`;
+  return null;
+}
+
 async function api(req, res, parts) {
   const role = authorize(req, res);
   if (!role) return;
@@ -133,10 +203,13 @@ async function api(req, res, parts) {
   }
   if (req.method === 'PUT' && id !== undefined) {
     if (!allowedWrite(role, col)) return json(res, 403, { error: 'Your key cannot write here' });
-    const doc = await readBody(req);
+    let doc;
+    try { doc = await readBody(req); } catch (e) { return json(res, 400, { error: 'Body must be valid JSON' }); }
     if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return json(res, 400, { error: 'Body must be an object' });
     if (DATA.includes(col) && doc.id !== id) return json(res, 400, { error: 'id mismatch' });
     const body = { ...doc }; delete body.id; delete body._id;
+    const problem = await invalid(col, id, body);
+    if (problem) return json(res, 400, { error: problem });
     if (col === 'auditlog' || role === 'staff') {
       try { await c.insertOne({ ...body, _id: id }); } catch (e) {
         if (e && e.code === 11000) return json(res, 409, { error: 'Already exists. Existing entries cannot be changed with this key.' });
