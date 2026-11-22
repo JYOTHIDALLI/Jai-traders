@@ -84,15 +84,31 @@ body.r-staff input[onchange^="so("],body.r-staff input[onchange^="sa("],body.r-s
  async function call(m,p,b){var r=await fetch('/api/data/'+p,{method:m,headers:H(),body:b===undefined?undefined:JSON.stringify(b)});
   if(r.status===401){localStorage.removeItem('gl-key');location.reload()}
   if(!r.ok){var j={};try{j=await r.json()}catch(e){}var e=new Error(j.error||r.status);e.code=j.error||String(r.status);throw e}return r.json()}
- var L={},last={},timers={};
+ /* Live refresh. One request brings every watched collection: every 15 s while the page is in use, every 60 s after
+    5 minutes with no tap or key press, and never while the page is hidden (it refreshes as soon as it is shown again).
+    When nothing has changed the server answers 304 with no data. */
+ var L={},last={},etag='',timer=null,inflight=null,again=false,kick=null,lastUse=Date.now();
+ var BUSY_MS=15000,IDLE_MS=60000,IDLE_AFTER=300000;
  var cp=function(x){return JSON.parse(JSON.stringify(x))};
  var doc1=function(x){return{id:x.id,exists:true,data:function(){return cp(x)}}};
  var snap=function(a){return{docs:a.map(doc1),metadata:{fromCache:false}}};
- async function poll(c){var a=await call('GET',c),s=JSON.stringify(a);if(last[c]&&last[c].s===s)return;last[c]={s:s,a:a};(L[c]||[]).forEach(function(f){f.ok(a)})}
+ function deliver(c,a){var s=JSON.stringify(a);if(last[c]&&last[c].s===s)return;last[c]={s:s,a:a};(L[c]||[]).forEach(function(f){f.ok(a)})}
+ async function poll(c){deliver(c,await call('GET',c))}
+ async function syncAll(){var cols=Object.keys(L),h=H();if(!cols.length)return;if(etag)h['if-none-match']=etag;
+  var r=await fetch('/api/sync?c='+cols.join(','),{headers:h});
+  if(r.status===304)return;
+  if(r.status===401){localStorage.removeItem('gl-key');location.reload();return}
+  if(!r.ok){var j={};try{j=await r.json()}catch(e){}var e=new Error(j.error||r.status);e.code=j.error||String(r.status);throw e}
+  var all=await r.json();etag=r.headers.get('etag')||'';cols.forEach(function(c){if(all[c])deliver(c,all[c])})}
+ function schedule(){clearTimeout(timer);timer=null;if(document.hidden||!Object.keys(L).length)return;timer=setTimeout(tick,Date.now()-lastUse>IDLE_AFTER?IDLE_MS:BUSY_MS)}
+ function tick(force){clearTimeout(timer);timer=null;if(inflight){if(force)again=true;return}
+  inflight=syncAll().catch(function(e){Object.keys(L).forEach(function(c){L[c].forEach(function(f){f.er&&f.er(e)})})})
+   .then(function(){inflight=null;if(again){again=false;tick()}else schedule()})}
  function listen(c,ok,er){(L[c]=L[c]||[]).push({ok:ok,er:er});
   if(last[c])setTimeout(function(){ok(last[c].a)},0);
-  if(!timers[c]){timers[c]=setInterval(function(){poll(c).catch(function(e){(L[c]||[]).forEach(function(f){f.er&&f.er(e)})})},4000)}
-  poll(c).catch(function(e){er&&er(e)})}
+  else if(!kick)kick=setTimeout(function(){kick=null;tick(true)},0)}
+ document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(timer);timer=null}else{lastUse=Date.now();tick()}});
+ ['pointerdown','keydown'].forEach(function(t){addEventListener(t,function(){var idle=Date.now()-lastUse>IDLE_AFTER;lastUse=Date.now();if(idle&&!document.hidden)tick()},{passive:true,capture:true})});
  var DBA={
   collection:function(c){return{
    onSnapshot:function(cb,er){listen(c,function(a){cb(snap(a))},er);return function(){}},

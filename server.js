@@ -105,6 +105,22 @@ async function api(req, res, parts) {
     if (role !== 'owner') return json(res, 403, { error: 'Only the owner can read the server log' });
     return json(res, 200, await db.collection('audit').find({}).sort({ t: -1 }).limit(1000).toArray());
   }
+  // Several collections in one request (the app's live refresh), e.g. /api/sync?c=cust,moves,sales.
+  // The ETag lets the app ask "changed since?" and get an empty 304 when nothing has.
+  if (parts[1] === 'sync') {
+    if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed' });
+    const cols = [...new Set((new URL(req.url, 'http://x').searchParams.get('c') || '').split(',').filter(Boolean))];
+    if (!cols.length || cols.some(c => !COLS.includes(c))) return json(res, 400, { error: 'Bad collection list' });
+    if (cols.some(c => !allowedRead(role, c))) return json(res, 403, { error: 'Not allowed' });
+    const lists = await Promise.all(cols.map(c => db.collection(c).find({}).limit(100000).toArray()));
+    const data = {};
+    cols.forEach((c, i) => { data[c] = lists[i].map(out); });
+    const body = JSON.stringify(data);
+    const etag = '"' + crypto.createHash('sha1').update(body).digest('base64url') + '"';
+    if (req.headers['if-none-match'] === etag) { res.writeHead(304, { etag, 'cache-control': 'no-store' }); return res.end(); }
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', etag });
+    return res.end(body);
+  }
   if (parts[1] !== 'data' || !COLS.includes(parts[2])) return json(res, 404, { error: 'Not found' });
   const col = parts[2], id = parts[3], c = db.collection(col);
   if (id !== undefined && !ID.test(id)) return json(res, 400, { error: 'Bad id' });
