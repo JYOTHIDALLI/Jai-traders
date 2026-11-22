@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Godown Ledger</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&display=swap">
+<style>
+:root{--bg:#EEF1F4;--surf:#fff;--ink:#14213D;--mut:#5B6578;--line:#D5DBE3;--acc:#E0A100;--accink:#14213D;--ok:#2F7D5B;--bad:#B8433A;
+font-family:'Hanken Grotesk',system-ui,sans-serif;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1626;--surf:#18223A;--ink:#EAEFF7;--mut:#9AA6BD;--line:#2B3753;--ok:#5CC596;--bad:#F08A80}}
+:root[data-theme="dark"]{--bg:#0F1626;--surf:#18223A;--ink:#EAEFF7;--mut:#9AA6BD;--line:#2B3753;--ok:#5CC596;--bad:#F08A80}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
+header{background:#14213D;color:#fff;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;border-bottom:1px solid #2B3753}
+.bar{max-width:980px;margin:0 auto;padding:12px 16px 6px;display:flex;align-items:center;gap:10px}
+.mark{width:28px;height:28px;border-radius:7px;background:var(--acc);position:relative;flex:none}
+.mark::after{content:"";position:absolute;left:6px;right:6px;top:8px;height:3px;background:#14213D;box-shadow:0 6px 0 #14213D,0 12px 0 #14213D}
+header h1{margin:0;font-size:18px;font-weight:800;letter-spacing:-.01em;flex:1}
+.dt{font-size:13px;color:#AEB9D0;white-space:nowrap}
+.dlb{border:1px solid #5B6A8A;background:transparent;color:#fff;border-radius:5px;padding:5px 9px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+nav{display:grid;grid-template-columns:repeat(5,1fr);max-width:980px;margin:0 auto;padding:0 8px}
+nav button{border:0;background:transparent;color:#AEB9D0;font:inherit;font-size:13px;font-weight:500;padding:10px 2px 9px;border-bottom:3px solid transparent;cursor:pointer}
+nav button.on{color:#fff;border-color:var(--acc);font-weight:700}
+nav button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--acc);outline-offset:1px}
+main{max-width:980px;margin:0 auto;padding:16px}
+h2{font-size:17px;margin:22px 0 10px}
+h2:first-child{margin-top:0}
+.bal{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.cell{background:var(--surf);border:1px solid var(--line);border-radius:6px;padding:10px 8px;text-align:center}
+.cell b{display:block;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.cell span{color:var(--mut);font-size:13px}
+.panel{background:var(--surf);border:1px solid var(--line);border-radius:6px;padding:14px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end}
+label{display:block;font-size:13px;color:var(--mut);font-weight:500}
+input,select{width:100%;margin-top:3px;padding:9px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:5px}
+button.pri{background:var(--acc);color:var(--accink);border:0;border-radius:5px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:5px;padding:6px 10px;font:inherit;cursor:pointer}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--surf);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:13px;color:var(--mut);font-weight:500}
+td.n,th.n{text-align:right}
+.bad{color:var(--bad);font-weight:700}.ok{color:var(--ok);font-weight:700}
+.note{color:var(--mut);font-size:13px;margin:6px 0}
+.prev{font-weight:700;padding:8px 0}
+.empty{padding:18px;text-align:center;color:var(--mut)}
+.gsw{position:relative;max-width:980px;margin:0 auto;padding:0 16px 8px}
+.gsw input{margin:0;background:#fff;color:#14213D;border:0}
+#gsl{display:none;position:absolute;left:16px;right:16px;top:100%;margin-top:-4px;background:var(--surf);color:var(--ink);border:1px solid var(--line);border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.3);max-height:60vh;overflow:auto;z-index:20}
+#gsl button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;padding:10px 12px;cursor:pointer}
+#gsl button span{color:var(--mut);font-size:13px;display:block}
+#gsl .gn{padding:10px 12px;color:var(--mut)}
+#gsl button.on{background:var(--bg)}
+.cc{background:var(--surf);border:1px solid var(--line);border-radius:6px;padding:12px;margin-bottom:10px}
+.cc .st{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:560px){.bal{grid-template-columns:repeat(3,1fr)}}
+body.r-staff button[onclick^="del("],body.r-view button[onclick^="del("],body.r-view button.pri:not([onclick^="xl("]):not([onclick^="unlock("]){display:none}
+body.r-staff input[onchange^="so("],body.r-staff input[onchange^="sa("],body.r-staff input[onchange^="sl("],body.r-view input[onchange^="so("],body.r-view input[onchange^="sa("],body.r-view input[onchange^="sl("]{pointer-events:none;opacity:.7;border-color:transparent;background:transparent}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<header><div class="bar"><span class="mark"></span><h1>Godown Ledger</h1><span class="dt" id="dt"></span><button class="dlb" onclick="dlApp()" title="Download the whole application with all your data">Download app</button></div>
+<div class="gsw" id="gsw"><input id="gs" placeholder="Find customer: type name, phone or place (press / to jump here)" oninput="gsr()" onfocus="gsr()" onkeydown="gk(event)" autocomplete="off" aria-label="Search customer"><div id="gsl" onmousedown="event.preventDefault()"></div></div>
+<nav id="nav"></nav></header>
+<main id="main"></main>
+<script>
+/* Connects the app to the server (and so to MongoDB Atlas). Replaces the claude.ai cloud. */
+(function(){
+ var KEY='',ROLE='owner';
+ localStorage.removeItem('gl-key');
+ var H=function(){return{'content-type':'application/json'}};
+ async function call(m,p,b){var r=await fetch('/api/data/'+p,{method:m,headers:H(),body:b===undefined?undefined:JSON.stringify(b)});
+  if(r.status===401){localStorage.removeItem('gl-key');location.reload()}
+  if(!r.ok){var j={};try{j=await r.json()}catch(e){}var e=new Error(j.error||r.status);e.code=j.error||String(r.status);throw e}return r.json()}
+ var L={},last={},timers={};
+ var cp=function(x){return JSON.parse(JSON.stringify(x))};
+ var doc1=function(x){return{id:x.id,exists:true,data:function(){return cp(x)}}};
+ var snap=function(a){return{docs:a.map(doc1),metadata:{fromCache:false}}};
+ async function poll(c){var a=await call('GET',c),s=JSON.stringify(a);if(last[c]&&last[c].s===s)return;last[c]={s:s,a:a};(L[c]||[]).forEach(function(f){f.ok(a)})}
+ function listen(c,ok,er){(L[c]=L[c]||[]).push({ok:ok,er:er});
+  if(last[c])setTimeout(function(){ok(last[c].a)},0);
+  if(!timers[c]){timers[c]=setInterval(function(){poll(c).catch(function(e){(L[c]||[]).forEach(function(f){f.er&&f.er(e)})})},4000)}
+  poll(c).catch(function(e){er&&er(e)})}
+ var DBA={
+  collection:function(c){return{
+   onSnapshot:function(cb,er){listen(c,function(a){cb(snap(a))},er);return function(){}},
+   get:async function(){return snap(await call('GET',c))},
+   orderBy:function(){return this},limit:function(){return this}}},
+  doc:function(p){var c=p.split('/')[0],id=p.split('/')[1];return{
+   get:async function(){try{var x=await call('GET',c+'/'+id);return{exists:true,data:function(){return cp(x)}}}catch(e){if(e.code==='Not found')return{exists:false,data:function(){return undefined}};throw e}},
+   set:async function(v){await call('PUT',c+'/'+id,v);poll(c).catch(function(){})},
+   delete:async function(){await call('DELETE',c+'/'+id);poll(c).catch(function(){})},
+   onSnapshot:function(cb,er){listen(c,function(a){var x=a.find(function(d){return d.id===id});cb({exists:!!x,data:function(){return x&&cp(x)},metadata:{fromCache:false}})},er);return function(){}}}}};
+ window.claude={use:async function(n){
+  if(n==='user')return{id:async function(){return ROLE+'-user'},isOwner:async function(){return ROLE==='owner'},canEdit:async function(){return false},can:async function(){return ROLE!=='view'}};
+  if(n==='db')return DBA;return null}};
+})();
+</script>
+<script>
+const G=['AAAA','AAA','AA','A','Kali'];
+const T=['Godown','Sales','Customers','Lines','Reports'];
+let LC='',tab='Godown',F={from:'',to:'',route:'',grade:''};
+const blank=()=>({cust:[],moves:[],sales:[],pays:[]});
+let S;
+try{S=JSON.parse(localStorage.getItem('godown-ledger')||'null')||blank()}catch(e){S=blank()}
+try{const sd=document.getElementById('seed');if(sd&&!localStorage.getItem('gl-seeded')&&!localStorage.getItem('godown-enc')&&!((S.cust||[]).length||(S.sales||[]).length||(S.moves||[]).length)){S=Object.assign(blank(),JSON.parse(sd.textContent));localStorage.setItem('gl-seeded','1');localStorage.setItem('godown-ledger',JSON.stringify(S))}}catch(e){}
+const save=()=>{if(OWN){try{if(CK)encStore();else if(!getPin())localStorage.setItem('godown-ledger',JSON.stringify(S))}catch(e){}}if(typeof cloudQueue==='function'){cloudQueue();pushQ()}};
+function defSched(){return{MON:{l:'DRM',o:157866},TUE:{l:'YEL',o:90574},WED:{l:'AMP',o:80552},THU:{l:'',o:0},FRI:{l:'PTP',o:552088},SAT:{l:'KKD',o:352946}}}
+if(!S.sched)S.sched=defSched();
+const uid=()=>Math.random().toString(36).slice(2,9);
+const today=()=>new Date().toISOString().slice(0,10);
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+const num=n=>(Math.round(n*100)/100).toLocaleString('en-IN');
+const $=id=>document.getElementById(id);
+const v=id=>$(id).value;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let BC=null,CM=null;
+const cu=id=>(CM?CM.get(id):S.cust.find(c=>c.id===id))||{name:'(deleted)',route:'',loc:''};
+const opts=(a,sel)=>a.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');
+const routes=()=>[...new Set(S.cust.map(c=>c.route).filter(Boolean).concat(S.moves.map(m=>m.route).filter(Boolean)))].sort();
+const bill=s=>s.qty*s.price;
+function bal(id){if(BC){if(!BC.t){BC.t={};S.sales.forEach(s=>BC.t[s.cid]=(BC.t[s.cid]||0)+bill(s)-s.paid);S.pays.forEach(p=>BC.t[p.cid]=(BC.t[p.cid]||0)-p.amt)}return(cu(id).open||0)+(BC.t[id]||0)}return(cu(id).open||0)+S.sales.filter(s=>s.cid===id).reduce((a,s)=>a+bill(s)-s.paid,0)-S.pays.filter(p=>p.cid===id).reduce((a,p)=>a+p.amt,0)}
+function stock(g){let t=0;S.moves.forEach(m=>{if(m.grade!==g)return;t+=m.type==='dispatch'?-m.qty:m.qty});return t}
+function avgCost(g){const i=S.moves.filter(m=>m.grade===g&&m.type==='inward'&&m.cost>0);const q=i.reduce((a,m)=>a+m.qty,0);return q?i.reduce((a,m)=>a+m.qty*m.cost,0)/q:0}
+function nav(){$('dt').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});$('nav').innerHTML=T.map(t=>`<button class="${t===tab?'on':''}" onclick="go('${t}')">${t}</button>`).join('')}
+function go(t){$('gsl').style.display='none';tab=t;render()}
+function render(){if(!unlocked){lockView();return}$('gsw').style.display='';nav();document.body.className='r-'+ROLE;BC={};CM=new Map(S.cust.map(c=>[c.id,c]));try{$('main').innerHTML=banner()+({Godown:vGodown,Sales:vSales,Customers:vCust,Lines:vLines,Reports:vRep,Detail:vDetail})[tab]()}finally{BC=null;CM=null}window.scrollTo(0,0)}
+
+/* Godown */
+function vGodown(){return vGodown0()+(OWN?cloudPanel():'')+logPanel()+`<h2>Backup</h2><div class="panel"><p class="note" style="margin-top:0">Your data lives in this browser only. Copy a backup now and then, and paste it back to restore.</p><button class="ghost" onclick="bk()">Show backup text</button> <button class="ghost" onclick="dlJson()">Download full backup (.json)</button> <button class="ghost" onclick="dlApp()">Download the application with all my data (.html)</button><div id="bk"></div></div>`}
+function bk(){$('bk').innerHTML='<textarea id="bt" rows="5" style="width:100%;margin-top:10px"></textarea><button class="ghost" onclick="rs()">Restore from this text</button>';$('bt').value=JSON.stringify(S);$('bt').select()}
+function rs(){if(!need())return;try{const d=JSON.parse(v('bt'));if(!d.cust||!d.sales)throw 0;if(!confirm('Replace all current data with this backup?'))return;const lg=S.log||[],sn=S.seen;S=Object.assign(blank(),d);S.log=lg;S.seen=sn;if(!S.sched)S.sched=defSched();logE('Data restored from a backup');save();render()}catch(e){alert('That text is not a valid backup.')}}
+function vGodown0(){
+ const d=today(),rs=routes();
+ const rec=rs.map(r=>{const m=S.moves.filter(x=>x.date===d&&x.route===r);
+  const dis=m.filter(x=>x.type==='dispatch').reduce((a,x)=>a+x.qty,0),ret=m.filter(x=>x.type==='return').reduce((a,x)=>a+x.qty,0);
+  const sold=S.sales.filter(s=>s.date===d&&cu(s.cid).route===r).reduce((a,s)=>a+s.qty,0);
+  return{r,dis,ret,sold,gap:dis-ret-sold}}).filter(x=>x.dis||x.ret||x.sold);
+ return `<h2>Stock in godown (kg)</h2>
+ <div class="bal">${G.map(g=>`<div class="cell"><b class="${stock(g)<0?'bad':''}">${num(stock(g))}</b><span>${g}</span></div>`).join('')}</div>
+ <h2>Add stock movement</h2>
+ <div class="panel"><div class="row">
+ <label>Type<select id="mt" onchange="mtc()"><option value="dispatch">Morning dispatch</option><option value="return">Evening return</option><option value="inward">New load received</option></select></label>
+ <label>Date<input id="md" type="date" value="${d}"></label>
+ <label id="mrw">Route<input id="mr" list="rl" placeholder="e.g. Line 1"><datalist id="rl">${rs.map(r=>`<option>${esc(r)}</option>`).join('')}</datalist></label>
+ <label>Grade<select id="mg">${opts(G)}</select></label>
+ <label>Quantity (kg)<input id="mq" type="number" min="0" step="any"></label>
+ <label id="mcw" style="display:none">Cost per kg (₹)<input id="mc" type="number" min="0" step="any"></label>
+ <button class="pri" onclick="addMove()">Save movement</button></div></div>
+ <h2>Today’s route check</h2>
+ ${rec.length?`<div class="wrap"><table><tr><th>Route</th><th class="n">Dispatched</th><th class="n">Returned</th><th class="n">Sold</th><th class="n">Difference</th></tr>${rec.map(x=>`<tr><td>${esc(x.r)}</td><td class="n">${num(x.dis)}</td><td class="n">${num(x.ret)}</td><td class="n">${num(x.sold)}</td><td class="n ${Math.abs(x.gap)<.01?'ok':'bad'}">${num(x.gap)}</td></tr>`).join('')}</table></div><p class="note">Difference = dispatched − returned − sold. Anything other than 0 needs checking.</p>`:'<div class="panel empty">No dispatch or sales logged today.</div>'}
+ <h2>Recent movements</h2>
+ ${S.moves.length?`<div class="wrap"><table><tr><th>Date</th><th>Type</th><th>Route</th><th>Grade</th><th class="n">kg</th><th class="n">Cost/kg</th><th></th></tr>${[...S.moves].reverse().slice(0,25).map(m=>`<tr><td>${m.date}</td><td>${{dispatch:'Dispatch',return:'Return',inward:'New load'}[m.type]}</td><td>${esc(m.route||'')}</td><td>${m.grade}</td><td class="n">${num(m.qty)}</td><td class="n">${m.cost?num(m.cost):''}</td><td><button class="ghost" onclick="del('moves','${m.id}')">Delete</button></td></tr>`).join('')}</table></div>`:'<div class="panel empty">Nothing yet. Log your first new load to set opening stock.</div>'}
+ ${S.cust.length?'':'<p class="note"><button class="ghost" onclick="sample()">Load sample data</button> to try the app.</p>'}`}
+function mtc(){const t=v('mt');$('mrw').style.display=t==='inward'?'none':'';$('mcw').style.display=t==='inward'?'':'none'}
+function addMove(){if(!can())return;const q=parseFloat(v('mq')),t=v('mt');
+ if(!(q>0))return alert('Enter a quantity above 0.');
+ if(t!=='inward'&&!v('mr').trim())return alert('Enter the route for this movement.');
+ if(dbl('m'+t+v('md')+v('mr')+v('mg')+q))return;S.moves.push({id:uid(),type:t,date:v('md')||today(),route:t==='inward'?'':v('mr').trim(),grade:v('mg'),qty:q,cost:t==='inward'?(parseFloat(v('mc'))||0):0});logE(`Added ${{dispatch:'dispatch',return:'return',inward:'new load'}[t]}: ${q} kg ${v('mg')} ${v('mr').trim()}`);save();render()}
+function del(k,id){if(!need())return;if(!confirm('Delete this entry?'))return;const it=S[k].find(x=>x.id===id);logE('Deleted from '+k+': '+JSON.stringify(it));S[k]=S[k].filter(x=>x.id!==id);save();render()}
+
+/* Sales */
+function vSales(){
+ if(!S.cust.length)return `<div class="panel empty">Add customers first, then record sales.<br><br><button class="pri" onclick="go('Customers')">Add customers</button></div>`;
+ const rts=[...new Set(S.cust.map(c=>c.route))].sort();if(SR!=='*'&&!rts.includes(SR))SR=rts[0]||'';
+ return `<h2>New sale</h2><div class="panel"><div class="row">
+ <label>Route<select id="sr" onchange="srch(this.value)"><option value="*"${SR==='*'?' selected':''}>All routes</option>${rts.map(r=>`<option${r===SR?' selected':''}>${esc(r)}</option>`).join('')}</select></label>
+ <label>Customer <span class="note" id="scn">(${cl(SR,'').length})</span><select id="sc" onchange="SC=this.value;prev()">${custOpts(SR,'',0,SC)}</select></label>
+ <label>Date<input id="sd" type="date" value="${today()}"></label>
+ <label>Grade<select id="sg" onchange="lastPrice()">${opts(G)}</select></label>
+ <label>Quantity (kg)<input id="sq" type="number" min="0" step="any" oninput="prev()"></label>
+ <label>Price per kg (₹)<input id="sp" type="number" min="0" step="any" oninput="prev()"></label>
+ <label>Paid now (₹)<input id="spd" type="number" min="0" step="any" value="0" oninput="prev()"></label>
+ <label>Paid by<select id="sm"><option>Cash</option><option>UPI</option></select></label></div>
+ <div id="cd" style="margin:10px 0">${custCard(SC||(cl(SR,'')[0]||{}).id)}</div><div class="prev" id="pv"></div><button class="pri" onclick="addSale()">Save sale</button></div>
+ <h2>Recent sales</h2>
+ ${S.sales.length?salesTable():false?`<div class="wrap"><table><tr><th>Date</th><th>Customer</th><th>Grade</th><th class="n">kg</th><th class="n">Price</th><th class="n">Bill</th><th class="n">Paid</th><th class="n">Pending</th><th class="n">Customer total due now</th><th></th></tr>${[...S.sales].reverse().slice(0,30).map(s=>`<tr><td>${s.date}</td><td>${esc(cu(s.cid).name)}</td><td>${s.grade}</td><td class="n">${num(s.qty)}</td><td class="n">${num(s.price)}</td><td class="n">${inr(bill(s))}</td><td class="n">${inr(s.paid)} ${s.paid?s.mode:''}</td><td class="n ${bill(s)-s.paid>0?'bad':''}">${inr(bill(s)-s.paid)}</td><td class="n">${inr(bal(s.cid))}</td><td><button class="ghost" onclick="del('sales','${s.id}')">Delete</button></td></tr>`).join('')}</table></div>`:'<div class="panel empty">No sales yet.</div>'}`}
+function prevDue(cid,d){return(cu(cid).open||0)+S.sales.filter(s=>s.cid===cid&&s.date<d).reduce((a,s)=>a+bill(s)-s.paid,0)-S.pays.filter(p=>p.cid===cid&&p.date<d).reduce((a,p)=>a+p.amt,0)}
+function salesTable(){const m=new Map();[...S.sales].reverse().forEach(s=>{const k=s.date+'|'+s.cid;if(!m.has(k))m.set(k,{date:s.date,cid:s.cid,a:[]});m.get(k).a.push(s)});
+ const gs=[...m.values()].sort((x,y)=>y.date.localeCompare(x.date)).slice(0,30);
+ return `<div class="wrap"><table><tr><th>Date</th><th>Customer</th><th>Items bought</th><th class="n">Previous pending</th><th class="n">Sell total</th><th class="n">Grand total</th><th class="n">Paid</th><th class="n">Total pending</th></tr>${gs.map(g=>{const b=g.a.reduce((x,s)=>x+bill(s),0),p=g.a.reduce((x,s)=>x+s.paid,0),pv=prevDue(g.cid,g.date),md=[...new Set(g.a.filter(s=>s.paid).map(s=>s.mode))].join('/');return `<tr><td>${g.date}</td><td><button class="ghost" onclick="openC('${g.cid}')">${esc(cu(g.cid).name)}</button></td><td style="white-space:normal;min-width:230px">${g.a.map(s=>`${s.grade} ${num(s.qty)} kg × ${num(s.price)} = ${inr(bill(s))} <button class="ghost" onclick="del('sales','${s.id}')">Delete</button>`).join('<br>')}</td><td class="n">${inr(pv)}</td><td class="n">${inr(b)}</td><td class="n">${inr(pv+b)}</td><td class="n">${inr(p)} ${md}</td><td class="n ${pv+b-p>0?'bad':''}">${inr(pv+b-p)}</td></tr>`}).join('')}</table></div><p class="note">Total pending = previous pending + sell total − paid. Tap a customer’s name to open their full details.</p>`}
+let SC='',SR='',PR='*',CF={r:'',q:'',s:'out',n:100},cft=null;
+function cl(r,q){q=(q||'').toLowerCase();return S.cust.filter(c=>(r==='*'||c.route===r)&&(!q||(c.name+' '+(c.loc||'')+' '+(c.addr||'')+' '+(c.phone||'')+' '+c.route).toLowerCase().includes(q))).sort((a,b)=>a.name.localeCompare(b.name))}
+function custOpts(r,q,o,sel){return cl(r,q).slice(0,300).map(c=>`<option value="${c.id}"${c.id===sel?' selected':''}>${esc(c.name)}${c.loc?' – '+esc(c.loc):''}${r==='*'?' ('+esc(c.route)+')':''}${o?' – owes '+inr(bal(c.id)):''}</option>`).join('')||'<option value="">No customers found</option>'}
+function custCards(fr){if(!fr.length)return '<div class="panel empty">No customers match your search.</div>';
+ return fr.slice(0,CF.n).map(r=>{const c=r.c,g=r.b>0?age(c.id):0;
+  return `<div class="cc"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:16px">${esc(c.name)}</b><span class="note" style="margin:0">Route ${esc(c.route)}</span></div>
+ <div class="note">Location: ${esc(c.loc||'\u2013')}</div>
+ <div class="row"><label>Phone<input type="tel" value="${esc(c.phone||'')}" onchange="sa('${c.id}',this.value,'phone')"></label><label>Address line<input value="${esc(c.addr||'')}" onchange="sa('${c.id}',this.value)"></label><label>Old pending (\u20b9)<input type="number" min="0" value="${c.open||''}" onchange="so('${c.id}',this.value)"></label></div>
+ <div class="st"><span>New credit <b>${inr(r.b-(c.open||0))}</b></span><span>Total due <b class="${r.b>0?'bad':''}">${inr(r.b)}</b></span><span>Oldest unpaid <b class="${g>30||g<0?'bad':''}">${r.b>0?(g<0?'Old balance':g+' days'):'\u2013'}</b></span></div>
+ <div style="margin-top:10px"><button class="ghost" onclick="openC('${c.id}')">Open full details</button> <button class="ghost" onclick="del('cust','${c.id}')">Delete</button></div></div>`}).join('')}
+function custCard(id){const c=S.cust.find(x=>x.id===id);if(!c)return '';const b=bal(id),ss=S.sales.filter(s=>s.cid===id).sort((x,y)=>y.date.localeCompare(x.date)),l=ss[0];
+ return `<div style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:14px"><b>${esc(c.name)}</b> · Route ${esc(c.route)}<br>Phone: ${esc(c.phone||'–')} · Location: ${esc(c.loc||'–')}<br>Address: ${esc(c.addr||'–')}<br>Old pending ${inr(c.open||0)} · Total due now <b class="${b>0?'bad':''}">${inr(b)}</b><br><button class="ghost" style="margin:4px 0" onclick="openC('${c.id}')">Open full details</button><br>${l?'Last purchase: '+l.date+' · '+ss.filter(s=>s.date===l.date).map(s=>s.grade+' '+num(s.qty)+' kg').join(', '):'No purchases yet'}</div>`}
+function pcard(){const e=$('pcd');if(e)e.innerHTML=custCard(v('pc'))}
+const norm=s=>(s||'').toLowerCase().replace(/\s+/g,' ').trim(),phd=s=>(s||'').replace(/\D/g,'').slice(-10);
+let LS_={k:'',t:0};
+function dbl(k){const n=Date.now();if(LS_.k===k&&n-LS_.t<10000)return !confirm('This looks the same as the entry you just saved. Save it again?');LS_={k,t:n};return false}
+function dupCheck(name,route,phone){const n=norm(name),r=norm(route),ph=phd(phone);
+ const same=S.cust.find(c=>norm(c.name)===n&&norm(c.route)===r);
+ if(same){if(confirm('This customer already exists ('+same.name+', route '+same.route+'), so it cannot be added again.\n\nOpen the existing customer?'))openC(same.id);return true}
+ const bp=ph.length>=8&&S.cust.find(c=>phd(c.phone)===ph);
+ if(bp){if(confirm('This phone number already belongs to '+bp.name+' (route '+bp.route+'), so this customer cannot be added again.\n\nOpen that customer?'))openC(bp.id);return true}
+ const sn=S.cust.find(c=>norm(c.name)===n);
+ if(sn){if(confirm('A customer named '+sn.name+' already exists on route '+sn.route+', so this one cannot be added. To add a different shop with the same name, include its place in the name, for example "'+name.trim()+' - Market".\n\nOpen the existing customer?'))openC(sn.id);return true}return false}
+function dupGroups(){const m=new Map(),g=[];S.cust.forEach(c=>{const k=norm(c.name)+'|'+norm(c.route);(m.get(k)||m.set(k,[]).get(k)).push(c)});m.forEach(a=>{if(a.length>1)g.push(a)});return g}
+function dupPanel(){const g=dupGroups();if(!g.length)return '';
+ return `<h2>Duplicate customers found</h2><div class="panel" style="border-color:var(--acc)"><p class="note" style="margin-top:0">These customers have the same name and route. Merge each copy into the first one, so every customer is one record. Sales, payments and old pending move together.</p>${g.map(a=>`<div style="margin:10px 0"><b>${esc(a[0].name)}</b> (${esc(a[0].route)}) has ${a.length} records${a.map((c,i)=>`<div class="note" style="margin:4px 0">${i?'Copy':'First'}: phone ${esc(c.phone||'–')}, total due ${inr(bal(c.id))}${i?` <button class="ghost" onclick="mergeC('${a[0].id}','${c.id}')">Merge into first</button>`:''}</div>`).join('')}</div>`).join('')}</div>`}
+function mergeC(k,d){if(!need())return;const a=S.cust.find(x=>x.id===k),b=S.cust.find(x=>x.id===d);if(!a||!b)return;
+ if(!confirm('Merge '+b.name+' (copy) into '+a.name+'? All sales and payments move to the first record, old pending is added together, and the copy is removed.'))return;
+ S.sales.forEach(s=>{if(s.cid===d)s.cid=k});S.pays.forEach(p=>{if(p.cid===d)p.cid=k});a.open=(a.open||0)+(b.open||0);
+ ['phone','addr','loc'].forEach(f=>{if(!a[f]&&b[f])a[f]=b[f]});S.cust=S.cust.filter(x=>x.id!==d);logE('Merged duplicate customer '+b.name+' into '+a.name);save();render()}
+let GI=0;
+function recent(id){try{const r=JSON.parse(localStorage.getItem('gl-recent')||'[]').filter(x=>x!==id);r.unshift(id);localStorage.setItem('gl-recent',JSON.stringify(r.slice(0,6)))}catch(e){}}
+function recents(){try{return JSON.parse(localStorage.getItem('gl-recent')||'[]').map(id=>S.cust.find(c=>c.id===id)).filter(Boolean)}catch(e){return[]}}
+function gbtn(c,i){return `<button class="${i===GI?'on':''}" onclick="gso('${c.id}')"><b>${esc(c.name)}</b><span>${esc(c.route)}${c.phone?' · '+esc(c.phone):''}${c.loc?' · '+esc(c.loc):''} · total due ${inr(bal(c.id))}</span></button>`}
+function gsr(){const q=v('gs').trim().toLowerCase(),l=$('gsl');GI=0;
+ if(!q){const r=recents();if(!r.length){l.style.display='none';return}l.style.display='block';l.innerHTML='<div class="gn">Recent customers</div>'+r.map(gbtn).join('');return}
+ const t=q.split(/\s+/),sc=c=>{const n=c.name.toLowerCase();return n.startsWith(q)?0:n.split(/\s+/).some(w=>w.startsWith(t[0]))?1:n.includes(q)?2:3};
+ const r=S.cust.filter(c=>{const hy=(c.name+' '+(c.loc||'')+' '+(c.addr||'')+' '+(c.phone||'')+' '+c.route).toLowerCase();return t.every(x=>hy.includes(x))}).sort((a,b)=>sc(a)-sc(b)||a.name.localeCompare(b.name)).slice(0,10);
+ l.style.display='block';l.innerHTML=r.length?r.map(gbtn).join(''):'<div class="gn">No customer found</div>'}
+function gso(id){$('gs').value='';$('gsl').style.display='none';openC(id)}
+function gk(e){const b=[...$('gsl').querySelectorAll('button')];
+ if(e.key==='Enter'){if(b[GI])b[GI].click()}
+ else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(!b.length)return;GI=(GI+(e.key==='ArrowDown'?1:b.length-1))%b.length;b.forEach((x,i)=>x.classList.toggle('on',i===GI));b[GI].scrollIntoView({block:'nearest'})}
+ else if(e.key==='Escape'){$('gs').value='';$('gsl').style.display='none'}}
+document.addEventListener('click',e=>{if(!e.target.closest('.gsw'))$('gsl').style.display='none'});
+document.addEventListener('keydown',e=>{if(e.key==='/'&&!/INPUT|SELECT|TEXTAREA/.test((document.activeElement||{}).tagName)&&$('gsw').style.display!=='none'){e.preventDefault();$('gs').focus()}});
+let DC='',PT='Customers';
+function openC(id){recent(id);if(tab!=='Detail')PT=tab;DC=id;tab='Detail';render()}
+function backC(){tab=PT||'Customers';render()}
+function payHere(){if(!can())return;const a=parseFloat(v('dpa'));if(!(a>0))return alert('Enter the amount received.');if(dbl('h'+DC+today()+a))return;S.pays.push({id:uid(),date:today(),cid:DC,amt:a,mode:v('dpm')});logE('Payment received: '+cu(DC).name+', '+a);save();render()}
+function vDetail(){const c=S.cust.find(x=>x.id===DC);const back='<p><button class="ghost" onclick="backC()">← Back</button> <button class="ghost" onclick="dlCust()">Download this customer</button></p>';
+ if(!c)return back+'<div class="panel empty">Customer not found.</div>';
+ const ss=S.sales.filter(s=>s.cid===DC),ps=S.pays.filter(p=>p.cid===DC);
+ const ev=[...new Set(ss.map(s=>s.date))].map(d=>({d,k:0,a:ss.filter(s=>s.date===d)})).concat(ps.map(p=>({d:p.date,k:1,p}))).sort((x,y)=>x.d.localeCompare(y.d)||x.k-y.k);
+ let r=c.open||0;
+ const rows=ev.map(e=>{const pv=r;
+  if(e.k===0){const b=e.a.reduce((x,s)=>x+bill(s),0),pd=e.a.reduce((x,s)=>x+s.paid,0);r=pv+b-pd;
+   return `<tr><td>${e.d}</td><td style="white-space:normal;min-width:200px">${e.a.map(s=>`${s.grade} ${num(s.qty)} kg × ${num(s.price)} = ${inr(bill(s))}`).join('<br>')}</td><td class="n">${inr(pv)}</td><td class="n">${inr(b)}</td><td class="n">${inr(pv+b)}</td><td class="n">${inr(pd)}</td><td class="n ${r>0?'bad':''}">${inr(r)}</td></tr>`}
+  r=pv-e.p.amt;return `<tr><td>${e.d}</td><td>Payment received (${esc(e.p.mode)})</td><td class="n">${inr(pv)}</td><td class="n"></td><td class="n"></td><td class="n">${inr(e.p.amt)}</td><td class="n ${r>0?'bad':''}">${inr(r)}</td></tr>`}).join('');
+ const tb=ss.reduce((x,s)=>x+bill(s),0),tk=ss.reduce((x,s)=>x+s.qty,0),tp=ss.reduce((x,s)=>x+s.paid,0)+ps.reduce((x,p)=>x+p.amt,0),due=bal(DC),g=due>0?age(DC):0;
+ const gr=G.map(x=>[x,ss.filter(s=>s.grade===x).reduce((q,s)=>q+s.qty,0)]).filter(x=>x[1]>0).map(x=>x[0]+' '+num(x[1])+' kg').join(' · ')||'No purchases yet';
+ const st=(l,v2,cl)=>`<div class="cell"><b class="${cl||''}" style="font-size:18px">${v2}</b><span>${l}</span></div>`;
+ return back+`<h2>${esc(c.name)}</h2>
+ <div class="panel"><div>Route: <b>${esc(c.route)}</b> · Phone: <b>${esc(c.phone||'–')}</b></div><div>Location: ${esc(c.loc||'–')}</div><div>Address: ${esc(c.addr||'–')}</div><div class="note">Buys: ${esc(gr)}</div></div>
+ <div class="bal" style="margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">${st('Old pending',inr(c.open||0))}${st('Total bought ('+num(tk)+' kg)',inr(tb))}${st('Total paid',inr(tp))}${st('Total due now',inr(due),due>0?'bad':'')}${st('Oldest unpaid',due>0?(g<0?'Old balance':g+' days'):'–',g>30||g<0?'bad':'')}</div>
+ <h2>Collect payment from ${esc(c.name)}</h2><div class="panel"><div class="row"><label>Amount (₹)<input id="dpa" type="number" min="0" step="any"></label><label>Paid by<select id="dpm"><option>Cash</option><option>UPI</option></select></label><button class="pri" onclick="payHere()">Save payment</button></div></div>
+ <h2>Full history</h2>${ev.length?`<div class="wrap"><table><tr><th>Date</th><th>Entry</th><th class="n">Previous pending</th><th class="n">Sell total</th><th class="n">Grand total</th><th class="n">Paid</th><th class="n">Total pending</th></tr>${c.open?`<tr><td></td><td>Old pending brought forward</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n bad">${inr(c.open)}</td></tr>`:''}${rows}</table></div><p class="note">Total pending = previous pending + sell total − paid.</p>`:'<div class="panel empty">No sales or payments yet.</div>'}`}
+function srch(r){if(r!==undefined)SR=r;SC='';$('sc').innerHTML=custOpts(SR,'');$('scn').textContent='('+cl(SR,'').length+')';prev()}
+function psrch(r){if(r!==undefined)PR=r;$('pc').innerHTML=custOpts(PR,v('pf'),1);$('pcn').textContent='('+cl(PR,v('pf')).length+')';pcard()}
+function cf(k,val){CF[k]=val;if(k!=='n')CF.n=100;const y=scrollY;render();scrollTo(0,y)}
+function cfd(val){clearTimeout(cft);cft=setTimeout(()=>{CF.q=val;CF.n=100;const y=scrollY;render();scrollTo(0,y);const e=$('cq');if(e){e.focus();e.setSelectionRange(val.length,val.length)}},350)}
+function custRows(rows){const q=CF.q.toLowerCase();const l=rows.filter(r=>(!CF.r||r.c.route===CF.r)&&(!q||(r.c.name+' '+(r.c.loc||'')+' '+(r.c.addr||'')+' '+(r.c.phone||'')+' '+r.c.route).toLowerCase().includes(q)));return l.sort(CF.s==='name'?(a,b)=>a.c.name.localeCompare(b.c.name):CF.s==='route'?(a,b)=>a.c.route.localeCompare(b.c.route)||a.c.name.localeCompare(b.c.name):(a,b)=>b.b-a.b)}
+function lastPrice(){const l=[...S.sales].reverse().find(s=>s.grade===v('sg'));if(l&&!v('sp'))$('sp').value=l.price;prev()}
+function prev(){$('cd').innerHTML=custCard(v('sc'));const t=(parseFloat(v('sq'))||0)*(parseFloat(v('sp'))||0),p=parseFloat(v('spd'))||0,o=v('sc')?bal(v('sc')):0,g=t+o;$('pv').textContent=`Sell total ${inr(t)}  +  Previous pending ${inr(o)}  =  Grand total ${inr(g)}  −  Paid ${inr(p)}  =  Total pending ${inr(g-p)}`}
+function addSale(){if(!can())return;if(!v('sc'))return alert('Select a route that has customers, then pick a customer.');SC=v('sc');const q=parseFloat(v('sq')),p=parseFloat(v('sp')),pd=parseFloat(v('spd'))||0;
+ if(!(q>0&&p>0))return alert('Enter quantity and price per kg.');ī
+ if(pd>q*p&&!confirm('Paid amount is more than the bill. Save anyway?'))return;
+ if(dbl('s'+v('sc')+v('sd')+v('sg')+q+p+pd))return;S.sales.push({id:uid(),date:v('sd')||today(),cid:v('sc'),grade:v('sg'),qty:q,price:p,paid:pd,mode:v('sm')});logE(`Added sale: ${cu(v('sc')).name}, ${q} kg ${v('sg')} at ${p}, paid ${pd}`);save();render()}
+
+/* Customers */
+function vCust(){return vCust0()+ledger()}
+function showL(id){LC=id;render();const e=$('led');if(e)e.scrollIntoView()}
+function sa(id,val,f){if(!need())return;if(f==='phone'){const ph=phd(val);if(ph.length>=8&&S.cust.some(x=>x.id!==id&&phd(x.phone)===ph)){alert('Another customer already has this phone number.');render();return}}const c=S.cust.find(x=>x.id===id);if(!c)return;c[f||'addr']=val.trim();logE((f==='phone'?'Phone':'Address')+' changed for '+c.name);save();render()}
+function so(id,val){if(!need())return;const c=S.cust.find(x=>x.id===id);if(!c)return;c.open=parseFloat(val)||0;logE('Old pending for '+c.name+' set to '+c.open);save();render()}
+function age(id){let P=S.pays.filter(p=>p.cid===id).reduce((a,p)=>a+p.amt,0);const op=cu(id).open||0;if(op>P+0.5)return -1;P=Math.max(0,P-op);const l=S.sales.filter(s=>s.cid===id).sort((a,b)=>a.date<b.date?-1:1);for(const s of l){const d=bill(s)-s.paid;if(d<=0)continue;const u=Math.min(d,P);P-=u;if(d-u>0.5)return Math.max(0,Math.round((Date.now()-new Date(s.date))/864e5))}return 0}
+function ledger(){if(!LC||!S.cust.find(c=>c.id===LC))return'';const c=cu(LC);
+ const ev=S.sales.filter(s=>s.cid===LC).map(s=>({d:s.date,t:`${s.grade} ${num(s.qty)} kg at ₹${num(s.price)}`,a:bill(s),c:s.paid})).concat(S.pays.filter(p=>p.cid===LC).map(p=>({d:p.date,t:'Payment received ('+p.mode+')',a:0,c:p.amt}))).sort((x,y)=>x.d<y.d?-1:1);let r=c.open||0;
+ return `<h2 id="led">Ledger: ${esc(c.name)}</h2><p class="note" style="margin-top:-4px">${esc([c.loc,c.addr].filter(Boolean).join(', '))}</p>${ev.length?`<div class="wrap"><table><tr><th>Date</th><th>Entry</th><th class="n">Billed</th><th class="n">Paid</th><th class="n">Balance</th></tr>${c.open?`<tr><td></td><td>Old pending brought forward</td><td class="n">${inr(c.open)}</td><td></td><td class="n bad">${inr(c.open)}</td></tr>`:''}${ev.map(e=>{r+=e.a-e.c;return `<tr><td>${e.d}</td><td>${e.t}</td><td class="n">${e.a?inr(e.a):''}</td><td class="n">${e.c?inr(e.c):''}</td><td class="n ${r>0?'bad':''}">${inr(r)}</td></tr>`}).join('')}</table></div>`:'<div class="panel empty">No sales or payments for this customer yet.</div>'}<p><button class="ghost" onclick="showL('')">Close ledger</button></p>`}
+function vCust0(){
+ const rows=S.cust.map(c=>({c,b:bal(c.id)}));const tot=rows.reduce((a,r)=>a+r.b,0);const fr=custRows(rows);
+ return `<h2>Add customer</h2><div class="panel"><div class="row">
+ <label>Name<input id="cn"></label><label>Location<input id="cl"></label><label>Phone<input id="cph" type="tel" placeholder="Mobile number"></label><label>Address line<input id="ca" placeholder="Door no., street, landmark"></label>
+ <label>Route<input id="cr" list="rl2" placeholder="e.g. Line 1"><datalist id="rl2">${routes().map(r=>`<option>${esc(r)}</option>`).join('')}</datalist></label>
+ <label>Old pending (₹)<input id="co" type="number" min="0" step="any"></label>
+ <button class="pri" onclick="addCust()">Save customer</button></div></div>
+ ${S.cust.length?`<h2>Collect payment</h2><div class="panel"><div class="row">
+ <label>Route<select id="pr" onchange="psrch(this.value)"><option value="*"${PR==='*'?' selected':''}>All routes</option>${[...new Set(S.cust.map(c=>c.route))].sort().map(r=>`<option${r===PR?' selected':''}>${esc(r)}</option>`).join('')}</select></label>
+ <label>Find customer<input id="pf" placeholder="Type name or place" oninput="psrch()" autocomplete="off"></label>
+ <label>Customer <span class="note" id="pcn">(${cl(PR,'').length})</span><select id="pc" onchange="pcard()">${custOpts(PR,'',1)}</select></label>
+ <label>Date<input id="pd" type="date" value="${today()}"></label>
+ <label>Amount (₹)<input id="pa" type="number" min="0" step="any"></label>
+ <label>Paid by<select id="pm"><option>Cash</option><option>UPI</option></select></label>
+ <button class="pri" onclick="addPay()">Save payment</button></div><div id="pcd" style="margin-top:10px">${custCard((cl(PR,'')[0]||{}).id)}</div></div>
+ ${OWN?dupPanel():''}<h2>Find customers</h2><div class="panel"><div class="row"><label>Route<select onchange="cf('r',this.value)"><option value="">All routes</option>${[...new Set(S.cust.map(c=>c.route))].sort().map(r=>`<option${r===CF.r?' selected':''}>${esc(r)}</option>`).join('')}</select></label><label>Search name, phone, place or address<input id="cq" value="${esc(CF.q)}" oninput="cfd(this.value)" autocomplete="off"></label><label>Sort by<select onchange="cf('s',this.value)"><option value="out"${CF.s==='out'?' selected':''}>Highest outstanding</option><option value="name"${CF.s==='name'?' selected':''}>Name A to Z</option><option value="route"${CF.s==='route'?' selected':''}>Route, then name</option></select></label></div><p class="note">Showing ${Math.min(CF.n,fr.length)} of ${fr.length} customers <button class="ghost" onclick="dlList()">Download this list</button> ${fr.length>CF.n?'<button class="ghost" onclick="cf(\'n\',CF.n+100)">Show 100 more</button>':''}</p></div>${fr.length===1?`<div class="panel" style="border-color:var(--acc);margin-top:10px"><b>1 customer found:</b> ${esc(fr[0].c.name)} <button class="ghost" onclick="openC('${fr[0].c.id}')">Open full details page</button></div>`:''}
+ <h2>Outstanding: ${inr(fr.reduce((a,r)=>a+r.b,0))}${CF.r||CF.q?' (filtered)':''}</h2>
+ ${custCards(fr)}`:'<div class="panel empty" style="margin-top:14px">No customers yet. Add your first one above.</div>'}`}
+function addCust(){if(!can())return;if(!v('cn').trim()||!v('cr').trim())return alert('Enter the customer name and route.');
+ if(dupCheck(v('cn'),v('cr'),v('cph')))return;S.cust.push({id:uid(),name:v('cn').trim(),loc:v('cl').trim(),route:v('cr').trim(),addr:v('ca').trim(),phone:v('cph').trim(),open:parseFloat(v('co'))||0});logE('Added customer: '+v('cn').trim()+' ('+v('cr').trim()+')');save();render()}
+function addPay(){if(!can())return;const a=parseFloat(v('pa'));if(!(a>0))return alert('Enter the amount received.');
+ if(dbl('p'+v('pc')+v('pd')+a))return;S.pays.push({id:uid(),date:v('pd')||today(),cid:v('pc'),amt:a,mode:v('pm')});logE(`Payment received: ${cu(v('pc')).name}, ${a}`);save();render()}
+
+/* Security */
+const SS=Date.now();
+const getPin=()=>{try{return localStorage.getItem('godown-enc')||''}catch(e){return ''}};
+let unlocked=!getPin();
+async function hp(p){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('gl:'+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return 'x'+btoa(p)}}
+function logE(a,w,t){S.log=S.log||[];const T=t||Date.now(),e={id:T+(t?'-w':'-'+uid()),t:T,a:String(a).slice(0,220),w:w?1:0,u:ME||''};S.log.push(e);if(!t)cloudLog(e);if(S.log.length>2000)S.log.shift()}
+function lockView(){document.body.className='';$('gsw').style.display='none';$('nav').innerHTML='';$('dt').textContent='';$('main').innerHTML=`<div class="panel" style="max-width:340px;margin:40px auto"><h2>Enter your old PIN</h2><p class="note">The PIN lock has been removed from this application so that more people can use it. Enter your old PIN one last time to open your saved data on this device.</p><label>PIN<input id="lp" type="password" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter')unlock()"></label><p><button class="pri" onclick="unlock()">Unlock</button></p></div>`}
+async function unlock(){try{const o=JSON.parse(localStorage.getItem('godown-enc'));const k=await dk(v('lp'),ub(o.s));const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(o.iv)},k,ub(o.d));S=JSON.parse(new TextDecoder().decode(pt));CK=null;try{localStorage.removeItem('godown-enc');localStorage.setItem('godown-ledger',JSON.stringify(S))}catch(e){}if(!S.sched)S.sched=defSched();try{JSON.parse(localStorage.getItem('gl-wrong')||'[]').forEach(t=>logE('Wrong PIN entered',1,t));localStorage.removeItem('gl-wrong')}catch(e){}unlocked=true;if(DB){startSync();if(started&&synced)await pull()}save();render();checkCloud()}catch(e){wrong()}}
+async function setPin(){const p=v('np');if(!/^\d{4,8}$/.test(p))return alert('Use 4 to 8 digits.');try{const salt=crypto.getRandomValues(new Uint8Array(16));CK=await dk(p,salt);localStorage.setItem('godown-enc',JSON.stringify({s:b64(salt),iv:'',d:''}));logE('PIN set or changed');await doEnc();localStorage.removeItem('godown-ledger');localStorage.removeItem('gl-pin')}catch(e){return alert('Could not turn on encryption in this browser.')}save();render()}
+async function lockNow(){await ep;unlocked=false;S=blank();S.sched=defSched();CK=null;render()}
+function rmPin(){if(!confirm('Remove the PIN lock? Your data will then be stored on this device without encryption.'))return;try{localStorage.setItem('godown-ledger',JSON.stringify(S));localStorage.removeItem('godown-enc')}catch(e){return alert('Could not remove the PIN.')}CK=null;logE('PIN removed');save();render()}
+function markSeen(){S.seen=Date.now();save();render()}
+function unseen(){return(S.log||[]).filter(e=>e.t>(S.seen||0)&&(e.t<SS||e.w)).length}
+function banner(){const n=unseen(),em=synced&&!OWN&&!(S.cust.length||S.sales.length||S.moves.length||S.pays.length)?'<div class="panel" style="border-color:var(--acc);margin-bottom:14px"><b>No data has been shared with you yet.</b> Ask the owner to open this page, go to the Godown tab, and tap <b>Send all my data to the cloud</b>. </div>':'';return em+(n?`<div class="panel" style="border-color:var(--acc);margin-bottom:14px"><b>${n} change${n>1?'s were':' was'} recorded since you last reviewed the log.</b> <button class="ghost" onclick="go('Godown');setTimeout(()=>{const e=$('lg');if(e)e.scrollIntoView()},0)">Review log</button></div>`:'')}
+function secPanel(){const on=!!getPin();return `<h2>Security</h2><div class="panel"><p class="${on?'ok':'bad'}" style="margin-top:0">${on?'PIN lock is on.':'No PIN set. Anyone who opens this page on this device can see and change your data.'}</p><div class="row"><label>${on?'New PIN':'Choose a PIN'} (4 to 8 digits)<input id="np" type="password" inputmode="numeric" autocomplete="off"></label><button class="pri" onclick="setPin()">${on?'Change PIN':'Set PIN'}</button>${on?'<button class="ghost" onclick="lockNow()">Lock now</button><button class="ghost" onclick="rmPin()">Remove PIN</button>':''}</div><p class="note">With a PIN, the data on this device is encrypted, so it cannot be read without the PIN. If you forget the PIN, the data on this device cannot be recovered, but the cloud backup can restore it.</p></div>`}
+function logPanel(){const l=[...(S.log||[])].reverse().slice(0,40);return `<h2 id="lg">Activity log</h2><div class="panel"><p class="note" style="margin-top:0">Every addition, deletion, change and failed PIN attempt is recorded with its time. Review it, then mark it reviewed. Later changes will show a banner at the top.</p><button class="ghost" onclick="markSeen()">Mark all as reviewed</button> <button class="ghost" onclick="verifyLog()">Check log against cloud</button> <button class="ghost" onclick="verifyData()">Check entries for changes</button></div>${l.length?`<div class="wrap"><table><tr><th>When</th><th>What happened</th></tr>${l.map(e=>`<tr><td>${new Date(e.t).toLocaleString('en-IN')}</td><td class="${e.w?'bad':''}" style="white-space:normal">${esc(e.a)}${e.u&&ME&&e.u!==ME?' (another user)':''}</td></tr>`).join('')}</table></div>`:'<div class="panel empty" style="margin-top:10px">No activity recorded yet.</div>'}`}
+
+/* Cloud, encryption, Excel */
+let OWN=true,ROLE='owner',SNAP={cust:null,moves:null,sales:null,pays:null,sched:null},synced=false,started=false,seeding=false,sp=Promise.resolve(),rt=null,DB=null,ME=null,CK=null,cloudMsg='Checking cloud backup…',tm=null,busy=false,again=false,ep=Promise.resolve();
+(async()=>{try{const u=await claude.use('user');ME=u?await u.id():null;DB=await claude.use('db');if(DB&&u){const ow=await u.isOwner(),ed=await u.canEdit(),w=await u.can('data.write');OWN=!!(ow||ed);ROLE=OWN?'owner':(w===false?'view':'staff')}}catch(e){}cloudMsg=DB?(OWN?'Cloud backup and live sharing are on.':'Live shared data is on. You are signed in as '+(ROLE==='view'?'a viewer (read only).':'staff (you can add entries).')):'Cloud is not available here. The database could not be reached.';upd();if(unlocked){startSync();checkCloud();render()}})();
+function upd(){const e=$('cs');if(e)e.textContent=cloudMsg}
+async function forceSend(){if(!DB||!OWN)return alert('Only the owner can send data.');
+ try{let n=0;for(const k of COLS){for(const x of S[k]){if(!x.ts){x.ts=Date.now();x.by=ME||''}x.h=hs(x);await DB.doc(k+'/'+x.id).set(Object.assign({},x));if(SNAP[k])SNAP[k].set(x.id,nrm(x));n++}}
+ await DB.doc('cfg/sched').set({v:S.sched});SNAP.sched=fp(S.sched);await DB.doc('cfg/meta').set({t:Date.now()});save();alert('Sent '+n+' records to the cloud. People you shared the page with will see them when they open it.')}
+ catch(e){alert('Could not send ('+((e&&e.code)||'error')+'). Check that the server is running and try again.')}}
+async function cloudCheck(){if(!DB)return alert('The database could not be reached.');
+ try{const r=[],nm={cust:'Customers',moves:'Stock entries',sales:'Sales',pays:'Payments'};for(const k of COLS){const q=await DB.collection(k).get();r.push(nm[k]+': '+q.docs.length+' in the cloud, '+S[k].length+' on this device')}alert('What shared people can see:\n\n'+r.join('\n')+'\n\nIf the cloud numbers are lower, tap "Send all my data to the cloud".')}
+ catch(e){alert('Could not read the cloud ('+((e&&e.code)||'error')+').')}}
+function cloudPanel(){return `<h2>Cloud backup</h2><div class="panel"><p id="cs" style="margin-top:0">${esc(cloudMsg)}</p><p class="note">Every change is saved in your MongoDB Atlas database a few seconds after you make it.</p><button class="pri" onclick="forceSend()">Send all my data to the cloud</button> <button class="ghost" onclick="cloudCheck()">Check what shared people can see</button> <button class="ghost" onclick="cloudSave()">Back up now</button> <button class="ghost" onclick="cloudRestore()">Restore from cloud</button></div>`}
+function cloudQueue(){if(!DB||!unlocked||!OWN)return;clearTimeout(tm);tm=setTimeout(cloudSave,3000)}
+async function cloudSave(){if(!DB)return alert('Cloud backup is not available here.');if(!unlocked)return;if(busy){again=true;return}busy=true;try{const o=Object.assign({},S);delete o.log;const s=JSON.stringify(o),n=Math.ceil(s.length/60000)||1;for(let i=0;i<n;i++)await DB.doc('backup/c'+i).set({i,d:s.slice(i*60000,(i+1)*60000)});await DB.doc('backup/meta').set({n,t:Date.now(),by:ME||''});cloudMsg='Cloud backup saved '+new Date().toLocaleString('en-IN')}catch(e){cloudMsg='Cloud backup failed ('+((e&&e.code)||'error')+'). Your data is still saved on this device.'}busy=false;upd();if(again){again=false;cloudQueue()}}
+async function checkCloud(){if(!DB||!unlocked||!OWN)return;try{const m=await DB.doc('backup/meta').get();if(m.exists){const t=new Date(m.data().t).toLocaleString('en-IN');cloudMsg='Last cloud backup: '+t;}else if(S.cust.length||S.sales.length)cloudQueue()}catch(e){cloudMsg='Cloud backup could not be checked.'}upd()}
+async function cloudRestore(skip){if(!DB)return alert('Cloud backup is not available here.');try{const m=(await DB.doc('backup/meta').get()).data();if(!m)return alert('No cloud backup found yet.');if(!skip&&!confirm('Replace the data on this device with the cloud backup from '+new Date(m.t).toLocaleString('en-IN')+'?'))return;let s='';for(let i=0;i<m.n;i++)s+=(await DB.doc('backup/c'+i).get()).data().d;const d=JSON.parse(s),lg=S.log||[],sn=S.seen;S=Object.assign(blank(),d);S.log=lg;S.seen=sn;if(!S.sched)S.sched=defSched();logE('Data restored from cloud backup');save();render()}catch(e){alert('Could not restore from the cloud backup.')}}
+async function cloudLog(e){if(!DB)return;try{await DB.doc('auditlog/'+e.id).set(e)}catch(x){}}
+async function verifyLog(){if(!DB)return alert('Cloud is not available, so the log cannot be checked.');try{const q=await DB.collection('auditlog').orderBy('t','desc').limit(1000).get(),have=new Set((S.log||[]).map(e=>e.id));let miss=0;q.docs.forEach(d=>{if(!have.has(d.id))miss++});alert(miss?miss+' entries are in the cloud log but missing here. They were removed, or this device’s browser data was cleared.':'The log on this device matches the cloud log. No entries were removed.')}catch(e){alert('Could not read the cloud log.')}}
+const b64=a=>{let s='';new Uint8Array(a).forEach(x=>s+=String.fromCharCode(x));return btoa(s)},ub=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function dk(p,salt){const m=await crypto.subtle.importKey('raw',new TextEncoder().encode(p),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},m,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function doEnc(){if(!CK)return;const iv=crypto.getRandomValues(new Uint8Array(12)),c=await crypto.subtle.encrypt({name:'AES-GCM',iv},CK,new TextEncoder().encode(JSON.stringify(S))),o=JSON.parse(localStorage.getItem('godown-enc'));o.iv=b64(iv);o.d=b64(c);localStorage.setItem('godown-enc',JSON.stringify(o))}
+function encStore(){ep=ep.then(doEnc).catch(()=>{})}
+function wrong(){const T=Date.now();try{const w=JSON.parse(localStorage.getItem('gl-wrong')||'[]');w.push(T);localStorage.setItem('gl-wrong',JSON.stringify(w.slice(-50)))}catch(e){}cloudLog({id:T+'-w',t:T,a:'Wrong PIN entered',w:1,u:ME||''});alert('Wrong PIN.');$('lp').value=''}
+function sheets(){return{Sales:[['date','customer','route','grade','kg','price','bill','paid','mode','pending']].concat(S.sales.map(s=>[s.date,cu(s.cid).name,cu(s.cid).route,s.grade,s.qty,s.price,bill(s),s.paid,s.mode,bill(s)-s.paid])),Stock:[['date','type','route','grade','kg','cost per kg']].concat(S.moves.map(m=>[m.date,m.type,m.route,m.grade,m.qty,m.cost])),Payments:[['date','customer','route','amount','mode']].concat(S.pays.map(p=>[p.date,cu(p.cid).name,cu(p.cid).route,p.amt,p.mode])),Customers:[['name','phone','location','address','route','old pending','outstanding']].concat(S.cust.map(c=>[c.name,c.phone||'',c.loc,c.addr||'',c.route,c.open||0,bal(c.id)])),Lines:[['day','line','starting credit','T credit']].concat(DAYS.map(d=>[d,S.sched[d].l,S.sched[d].o,lineCr(d)]))}}
+async function saveOut(name,blob){try{if(typeof claude!=='undefined'){const dl=await claude.use('downloads');if(dl){await dl.save({filename:name,data:blob});return}}}catch(e){if(e&&e.code==='declined')return;if(e&&e.code&&e.code!=='unavailable'&&e.code!=='not_signed'){alert('Could not save the file ('+e.code+').');return}}
+ const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
+function csvAll(sh){const q=x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"';return Object.entries(sh).map(([n,r])=>q(n)+'\n'+r.map(w=>w.map(q).join(',')).join('\n')).join('\n\n')}
+async function dlSheets(name,sh){try{if(typeof XLSX!=='undefined'){const wb=XLSX.utils.book_new();Object.entries(sh).forEach(([n,r])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(r),n.slice(0,31)));await saveOut(name+'.xlsx',new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}else await saveOut(name+'.csv',new Blob(['\ufeff'+csvAll(sh)],{type:'text/csv'}))}catch(e){alert('Could not create the file.')}}
+function xl(){return dlSheets('godown-ledger-'+today(),sheets())}
+function dlJson(){return saveOut('godown-ledger-backup-'+today()+'.json',new Blob([JSON.stringify(S,null,1)],{type:'application/json'}))}
+function dlApp(){try{
+ const sc=[...document.scripts].find(s=>!s.src&&s.id!=='seed'&&s.textContent.indexOf("const G=['AAAA'")>-1),st=document.querySelector('style'),xs=[...document.scripts].find(s=>/xlsx/.test(s.src||'')),hd=document.querySelector('header').cloneNode(true),z=(q,f)=>{const e=hd.querySelector(q);if(e)f(e)};
+ z('#nav',e=>e.innerHTML='');z('#dt',e=>e.textContent='');z('#gsl',e=>{e.innerHTML='';e.removeAttribute('style')});z('#gsw',e=>e.removeAttribute('style'));z('#gs',e=>e.removeAttribute('value'));z('#dlh',e=>e.removeAttribute('style'));
+ if(!sc||!st||!hd.querySelector('#gs'))return alert('Could not read the application to save it.');
+ const seed=JSON.stringify(Object.assign({},S,{log:[],seen:0})).replace(/</g,'\\u003c');
+ const html='<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Godown Ledger</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&display=swap"><style>'+st.textContent+'</style>'+(xs?'<script src="'+xs.src+'"><\/script>':'')+'</head><body>'+hd.outerHTML+'\n<main id="main"></main>\n<script id="seed" type="application/json">'+seed+'<\/script>\n<script>'+sc.textContent+'<\/script>\n</body></html>';
+ return saveOut('godown-ledger.html',new Blob([html],{type:'text/html'}))}catch(e){alert('Could not create the application file.')}}
+function dlList(){const rows=custRows(S.cust.map(c=>({c,b:bal(c.id)})));return dlSheets('customers-'+today(),{Customers:[['name','phone','location','address','route','old pending','total due']].concat(rows.map(r=>[r.c.name,r.c.phone||'',r.c.loc||'',r.c.addr||'',r.c.route,r.c.open||0,r.b]))})}
+function dlCust(){const c=S.cust.find(x=>x.id===DC);if(!c)return;const ss=S.sales.filter(s=>s.cid===DC),ps=S.pays.filter(p=>p.cid===DC);
+ return dlSheets((c.name.replace(/[^\w ]+/g,'').trim().replace(/ +/g,'-')||'customer')+'-'+today(),{Summary:[['name','route','phone','location','address','old pending','total bought','total paid','total due'],[c.name,c.route,c.phone||'',c.loc||'',c.addr||'',c.open||0,ss.reduce((a,s)=>a+bill(s),0),ss.reduce((a,s)=>a+s.paid,0)+ps.reduce((a,p)=>a+p.amt,0),bal(DC)]],Sales:[['date','grade','kg','price','bill','paid','mode']].concat(ss.map(s=>[s.date,s.grade,s.qty,s.price,bill(s),s.paid,s.mode])),Payments:[['date','amount','mode']].concat(ps.map(p=>[p.date,p.amt,p.mode]))})}
+
+/* Live sharing */
+const COLS=['cust','moves','sales','pays'],fp=o=>JSON.stringify(o),byTs=(a,b)=>(a.ts||0)-(b.ts||0);
+const nrm=o=>JSON.stringify(Object.keys(o).sort().reduce((r,k)=>(k==='h'?r:(r[k]=o[k],r)),{}));
+const hs=x=>{const s=nrm(x);let a=5381,b=52711;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=(a*33)^c;b=(b*31+c)|0}return(a>>>0).toString(36)+(b>>>0).toString(36)};
+function need(){if(OWN)return true;alert('Only the owner can do this.');return false}
+function can(){if(ROLE!=='view')return true;alert('You have read-only access.');return false}
+function pushQ(){sp=sp.then(doPush).catch(()=>{})}
+function softR(){clearTimeout(rt);rt=setTimeout(()=>{if(!unlocked)return;if(/INPUT|SELECT|TEXTAREA/.test((document.activeElement||{}).tagName||''))return softR();const y=scrollY;render();scrollTo(0,y)},500)}
+function dirty(k){const o=SNAP[k];return S[k].length!==o.size||S[k].some(x=>o.get(x.id)!==nrm(x))}
+function onCol(k,s){if(s.metadata.fromCache)return;const m=new Map(),a=[];s.docs.forEach(d=>{const x=d.data();m.set(d.id,nrm(x));a.push(x)});
+ if(SNAP[k]===null){if(!a.length&&OWN&&(seeding||S[k].length)){SNAP[k]=new Map();return}}else if(dirty(k))return;
+ SNAP[k]=m;S[k]=a.sort(byTs);softR()}
+async function pull(){try{for(const k of COLS){const q=await DB.collection(k).get(),m=new Map(),a=[];q.docs.forEach(d=>{const x=d.data();m.set(d.id,nrm(x));a.push(x)});S[k]=a.sort(byTs);SNAP[k]=m}const s=await DB.doc('cfg/sched').get();if(s.exists){S.sched=s.data().v;SNAP.sched=fp(S.sched)}}catch(e){}}
+async function startSync(){if(started||!DB||!unlocked)return;started=true;try{seeding=OWN&&!(await DB.doc('cfg/meta').get()).exists}catch(e){}
+ let n=0;const fin=()=>{if(++n===5){synced=true;if(seeding&&OWN)DB.doc('cfg/meta').set({t:Date.now()}).catch(()=>{});pushQ();upd()}},er=e=>{cloudMsg='Live sync stopped ('+((e&&e.code)||'error')+'). Reload the page.';upd()};
+ COLS.forEach(k=>{let f=1;DB.collection(k).onSnapshot(s=>{onCol(k,s);if(f&&!s.metadata.fromCache){f=0;fin()}},er)});
+ let f2=1;DB.doc('cfg/sched').onSnapshot(s=>{if(s.metadata.fromCache)return;if(s.exists){if(SNAP.sched===null||fp(S.sched)===SNAP.sched){S.sched=s.data().v;SNAP.sched=fp(S.sched);softR()}}else if(SNAP.sched===null)SNAP.sched='';if(f2){f2=0;fin()}},er)}
+async function doPush(){if(!DB||!synced||!unlocked)return;try{
+ for(const k of COLS){const old=SNAP[k],cur=new Set();
+  for(const x of S[k]){cur.add(x.id);if(!x.ts){x.ts=Date.now();x.by=ME||''}const n=nrm(x);if(old.get(x.id)!==n){x.h=hs(x);await DB.doc(k+'/'+x.id).set(Object.assign({},x));old.set(x.id,n)}}
+  for(const id of [...old.keys()])if(!cur.has(id)){await DB.doc(k+'/'+id).delete();old.delete(id)}}
+ if(OWN){const sc=fp(S.sched);if(SNAP.sched!==sc){await DB.doc('cfg/sched').set({v:S.sched});SNAP.sched=sc}}
+}catch(e){cloudMsg='Sync problem ('+((e&&e.code)||'error')+'). Your entries are kept and will retry on the next change.';upd()}}
+function verifyData(){const bad=[];COLS.forEach(k=>S[k].forEach(x=>{if(x.h&&x.h!==hs(x))bad.push(k)}));alert(bad.length?bad.length+' saved entries were changed after they were created ('+[...new Set(bad)].join(', ')+'). Check them against your records.':'No saved entry has been changed since it was created.')}
+
+/* Lines */
+const DAYS=['MON','TUE','WED','THU','FRI','SAT'];
+function lineCr(d){const x=S.sched[d];if(!x||!x.l)return 0;const k=x.l.trim().toLowerCase();return x.o+S.cust.filter(c=>c.route.trim().toLowerCase()===k).reduce((a,c)=>a+bal(c.id)-(c.open||0),0)}
+function vLines(){const ti=new Date().getDay()-1;let gt=0;
+ const rows=DAYS.map((d,i)=>{const x=S.sched[d]||{l:'',o:0},t=lineCr(d);gt+=t;const n=x.l?S.cust.filter(c=>c.route.trim().toLowerCase()===x.l.trim().toLowerCase()).length:0;const un=x.l?x.o-S.cust.filter(c=>c.route.trim().toLowerCase()===x.l.trim().toLowerCase()).reduce((a,c)=>a+(c.open||0),0):0;
+ return `<tr style="${i===ti?'background:var(--bg)':''}"><td><b>${d}</b>${i===ti?' <span class="note">today</span>':''}</td><td><input aria-label="Line for ${d}" value="${esc(x.l)}" style="width:90px;margin:0" onchange="sl('${d}','l',this.value)"></td><td class="n"><input aria-label="Starting credit for ${d}" type="number" min="0" value="${x.o||''}" style="width:120px;margin:0;text-align:right" onchange="sl('${d}','o',this.value)"></td><td class="n"><b>${x.l?inr(t):''}</b></td><td class="n">${n}</td><td class="n ${un<0?'bad':''}">${x.l?inr(un):''}</td></tr>`}).join('');
+ return `<h2>Weekly lines and credit</h2><div class="wrap"><table><tr><th>Day</th><th>Line</th><th class="n">Starting credit (₹)</th><th class="n">T credit</th><th class="n">Customers</th><th class="n">Old pending not yet given to customers</th></tr>${rows}<tr><td colspan="3"><b>Grand total</b></td><td class="n"><b>${inr(gt)}</b></td><td></td><td></td></tr></table></div>
+ <p class="note">Set the line name for each day and the credit already pending on that line. T credit = starting credit + new unpaid sales − payments collected from customers whose route matches the line name (for example DRM). When you enter a customer’s old pending in the Customers tab, it is counted inside the line’s starting credit, not added twice, and the last column shows how much is still not given to any customer. Leave a day’s line empty for a holiday.</p>`}
+function sl(d,k,val){if(!need())return;S.sched[d]=S.sched[d]||{l:'',o:0};S.sched[d][k]=k==='o'?(parseFloat(val)||0):val.trim();logE('Line '+d+(k==='o'?' starting credit':' name')+' changed to '+val);save();render()}
+
+/* Reports */
+function vRep(){
+ const ss=S.sales.filter(s=>(!F.from||s.date>=F.from)&&(!F.to||s.date<=F.to)&&(!F.grade||s.grade===F.grade)&&(!F.route||cu(s.cid).route===F.route));
+ const ps=S.pays.filter(p=>(!F.from||p.date>=F.from)&&(!F.to||p.date<=F.to)&&(!F.route||cu(p.cid).route===F.route));
+ const gain=s=>{const c=avgCost(s.grade);return c?s.qty*(s.price-c):0};
+ const by=(arr,k)=>{const m={};arr.forEach(x=>{(m[k(x)]=m[k(x)]||[]).push(x)});return m};
+ const rr=Object.entries(by(ss,s=>cu(s.cid).route||'–')).map(([r,a])=>{
+  const col=a.reduce((x,s)=>x+s.paid,0)+ps.filter(p=>cu(p.cid).route===r).reduce((x,p)=>x+p.amt,0);
+  const out=S.cust.filter(c=>c.route===r).reduce((x,c)=>x+bal(c.id),0);
+  return{r,kg:a.reduce((x,s)=>x+s.qty,0),b:a.reduce((x,s)=>x+bill(s),0),col,out}});
+ const cr=Object.entries(by(ss,s=>s.cid)).map(([id,a])=>{const g=by(a,s=>s.grade);
+  const fav=Object.entries(g).sort((x,y)=>y[1].reduce((q,s)=>q+s.qty,0)-x[1].reduce((q,s)=>q+s.qty,0))[0][0];
+  const kg=a.reduce((x,s)=>x+s.qty,0),b=a.reduce((x,s)=>x+bill(s),0);
+  return{n:cu(id).name,o:new Set(a.map(s=>s.date)).size,kg,b,avg:b/kg,fav,gain:a.reduce((x,s)=>x+gain(s),0)}}).sort((x,y)=>y.b-x.b);
+ const mo=Object.entries(by(ss,s=>s.date.slice(0,7))).sort();
+ const f=`<div class="panel"><div class="row">
+ <label>From<input type="date" id="ff" value="${F.from}" onchange="flt()"></label>
+ <label>To<input type="date" id="ft" value="${F.to}" onchange="flt()"></label>
+ <label>Route<select id="fr" onchange="flt()"><option value="">All</option>${opts(routes(),F.route)}</select></label>
+ <label>Grade<select id="fg" onchange="flt()"><option value="">All</option>${opts(G,F.grade)}</select></label>
+ <label>Export<select id="fx"><option value="sales">Sales</option><option value="moves">Stock movements</option><option value="pays">Payments</option><option value="cust">Customers and balances</option></select></label><button class="ghost" onclick="csv()">Copy for Excel</button> <button class="pri" onclick="xl()">Download Excel (.xlsx)</button></div><div id="csvbox"></div></div>`;
+ if(!ss.length)return `<h2>Reports</h2>${f}<div class="panel empty" style="margin-top:14px">No sales match these filters.</div>`;
+ return `<h2>Reports</h2>${f}
+ <h2>By route</h2><div class="wrap"><table><tr><th>Route</th><th class="n">kg sold</th><th class="n">Sales</th><th class="n">Collected</th><th class="n">Outstanding now</th></tr>${rr.map(x=>`<tr><td>${esc(x.r)}</td><td class="n">${num(x.kg)}</td><td class="n">${inr(x.b)}</td><td class="n">${inr(x.col)}</td><td class="n ${x.out>0?'bad':''}">${inr(x.out)}</td></tr>`).join('')}</table></div>
+ <h2>By customer</h2><div class="wrap"><table><tr><th>Customer</th><th class="n">Buying days</th><th class="n">kg</th><th class="n">Sales</th><th class="n">Avg ₹/kg</th><th>Prefers</th><th class="n">Gain</th></tr>${cr.map(x=>`<tr><td>${esc(x.n)}</td><td class="n">${x.o}</td><td class="n">${num(x.kg)}</td><td class="n">${inr(x.b)}</td><td class="n">${num(x.avg)}</td><td>${x.fav}</td><td class="n">${x.gain?inr(x.gain):'–'}</td></tr>`).join('')}</table></div>
+ <p class="note">Gain uses the average cost per kg of each grade from your new-load entries. It shows – until a cost is entered.</p>
+ <h2>kg sold by month and grade</h2><div class="wrap"><table><tr><th>Month</th>${G.map(g=>`<th class="n">${g}</th>`).join('')}</tr>${mo.map(([m,a])=>`<tr><td>${m}</td>${G.map(g=>`<td class="n">${num(a.filter(s=>s.grade===g).reduce((x,s)=>x+s.qty,0))}</td>`).join('')}</tr>`).join('')}</table></div>`}
+function flt(){F={from:v('ff'),to:v('ft'),route:v('fr'),grade:v('fg')};render()}
+function csv(){const k=v('fx'),D={sales:[['date','customer','route','grade','kg','price','bill','paid','mode','pending']].concat(S.sales.map(s=>[s.date,cu(s.cid).name,cu(s.cid).route,s.grade,s.qty,s.price,bill(s),s.paid,s.mode,bill(s)-s.paid])),moves:[['date','type','route','grade','kg','cost per kg']].concat(S.moves.map(m=>[m.date,m.type,m.route,m.grade,m.qty,m.cost])),pays:[['date','customer','route','amount','mode']].concat(S.pays.map(p=>[p.date,cu(p.cid).name,cu(p.cid).route,p.amt,p.mode])),cust:[['name','phone','location','address','route','outstanding']].concat(S.cust.map(c=>[c.name,c.phone||'',c.loc,c.addr||'',c.route,bal(c.id)]))};
+ const t=D[k].map(r=>r.join('\t')).join('\n');
+ const b=$('csvbox');b.innerHTML='<p class="note">Copy this into Excel or Google Sheets.</p><textarea id="ct" rows="5" style="width:100%"></textarea>';
+ $('ct').value=t;$('ct').select();try{navigator.clipboard.writeText(t).then(()=>{b.firstChild.textContent='Copied. Paste it into Excel or Google Sheets.'})}catch(e){}}
+
+function sample(){if(!need())return;const d=today(),y=new Date(Date.now()-864e5).toISOString().slice(0,10);
+ const a=uid(),b=uid(),c=uid();
+ S.cust=[{id:a,name:'Ramesh Traders',loc:'Market Road',route:'Line 1'},{id:b,name:'Lakshmi Stores',loc:'Gandhi Nagar',route:'Line 1'},{id:c,name:'Sai Fruits',loc:'Bus Stand',route:'Line 2'}];
+ S.moves=[...G.map((g,i)=>({id:uid(),type:'inward',date:y,route:'',grade:g,qty:500-i*60,cost:60-i*8})),
+  {id:uid(),type:'dispatch',date:d,route:'Line 1',grade:'AAA',qty:80,cost:0},{id:uid(),type:'return',date:d,route:'Line 1',grade:'AAA',qty:10,cost:0}];
+ S.sales=[{id:uid(),date:d,cid:a,grade:'AAA',qty:45,price:72,paid:2000,mode:'UPI'},{id:uid(),date:d,cid:b,grade:'AAA',qty:25,price:70,paid:0,mode:'Cash'},{id:uid(),date:y,cid:c,grade:'AA',qty:30,price:60,paid:1800,mode:'Cash'}];
+ S.pays=[];logE('Sample data loaded');save();render()}
+render();
+</script>
+</body>
+</html>

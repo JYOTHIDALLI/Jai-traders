@@ -1,0 +1,20 @@
+{
+  "name": "godown-app",
+  "version": "1.0.0",
+  "description": "Godown Ledger",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0"
+  },
+  "devDependencies": {
+    "vercel": "^66.6.0"
+  }
+}
