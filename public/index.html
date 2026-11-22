@@ -283,7 +283,7 @@ function custRows(rows){const q=CF.q.toLowerCase();const l=rows.filter(r=>(!CF.r
 function lastPrice(){const l=[...S.sales].reverse().find(s=>s.grade===v('sg'));if(l&&!v('sp'))$('sp').value=l.price;prev()}
 function prev(){$('cd').innerHTML=custCard(v('sc'));const t=(parseFloat(v('sq'))||0)*(parseFloat(v('sp'))||0),p=parseFloat(v('spd'))||0,o=v('sc')?bal(v('sc')):0,g=t+o;$('pv').textContent=`Sell total ${inr(t)}  +  Previous pending ${inr(o)}  =  Grand total ${inr(g)}  −  Paid ${inr(p)}  =  Total pending ${inr(g-p)}`}
 function addSale(){if(!can())return;if(!v('sc'))return alert('Select a route that has customers, then pick a customer.');SC=v('sc');const q=parseFloat(v('sq')),p=parseFloat(v('sp')),pd=parseFloat(v('spd'))||0;
- if(!(q>0&&p>0))return alert('Enter quantity and price per kg.');ī
+ if(!(q>0&&p>0))return alert('Enter quantity and price per kg.');
  if(pd>q*p&&!confirm('Paid amount is more than the bill. Save anyway?'))return;
  if(dbl('s'+v('sc')+v('sd')+v('sg')+q+p+pd))return;S.sales.push({id:uid(),date:v('sd')||today(),cid:v('sc'),grade:v('sg'),qty:q,price:p,paid:pd,mode:v('sm')});logE(`Added sale: ${cu(v('sc')).name}, ${q} kg ${v('sg')} at ${p}, paid ${pd}`);save();render()}
 
