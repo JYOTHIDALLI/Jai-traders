@@ -27,9 +27,20 @@ if (nodeDnsServers.includes('127.0.0.1') || nodeDnsServers.includes('::1')) {
 }
 
 const { MongoClient } = require('mongodb');
-const { MONGODB_URI, OWNER_KEY, STAFF_KEY, VIEW_KEY, PORT = 3000 } = process.env;
-const effectiveOwnerKey = OWNER_KEY || 'local-owner';
+const { MONGODB_URI, PORT = 3000 } = process.env;
 const hasDatabaseConfig = !!MONGODB_URI && !MONGODB_URI.includes('<db_password>');
+
+// A key still set to the .env.example placeholder is public, so it counts as not set.
+const keyFrom = name => {
+  const v = process.env[name] || '';
+  if (!/^replace-with-/.test(v)) return v;
+  console.warn(name + ' is still the example placeholder, so it is ignored. Set your own long random key.');
+  return '';
+};
+const OWNER_KEY = keyFrom('OWNER_KEY'), STAFF_KEY = keyFrom('STAFF_KEY'), VIEW_KEY = keyFrom('VIEW_KEY');
+// The built-in "local-owner" key only works while there is no database, for trying the app on your own computer.
+const effectiveOwnerKey = OWNER_KEY || (hasDatabaseConfig ? '' : 'local-owner');
+if (hasDatabaseConfig && !OWNER_KEY) console.warn('OWNER_KEY is not set, so nobody can use the owner role. Add OWNER_KEY to .env (or to the host\'s environment variables) and restart.');
 
 const DATA = ['cust', 'moves', 'sales', 'pays'];
 const COLS = [...DATA, 'cfg', 'backup', 'auditlog'];
@@ -40,7 +51,7 @@ const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(Strin
 // A missing or empty key is no role at all, never the owner.
 const roleOf = k => {
   if (!k) return null;
-  return same(k, effectiveOwnerKey) ? 'owner' : (STAFF_KEY && same(k, STAFF_KEY)) ? 'staff' : (VIEW_KEY && same(k, VIEW_KEY)) ? 'view' : null;
+  return (effectiveOwnerKey && same(k, effectiveOwnerKey)) ? 'owner' : (STAFF_KEY && same(k, STAFF_KEY)) ? 'staff' : (VIEW_KEY && same(k, VIEW_KEY)) ? 'view' : null;
 };
 
 // slow down key guessing: 30 wrong keys per 10 minutes per address

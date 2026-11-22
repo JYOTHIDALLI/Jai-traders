@@ -10,7 +10,8 @@ Three people types: owner (everything), staff (add entries only), viewer (look o
 4. Make your settings file:
    - Copy `.env.example` and name the copy `.env`
    - In `.env`, replace `<db_password>` with the password of your Atlas database user `jyothidalli925_db_user`
-   - Replace the three keys with your own long random texts. Give staff only the STAFF key and viewers only the VIEW key.
+   - Fill in the three keys with your own long random texts. Give staff only the STAFF key and viewers only the VIEW key.
+     The owner key is required once the database is set: the built-in `local-owner` key only works while there is no database.
 5. Run `npm start`, then open **http://localhost:3000** in Chrome and type your owner key when asked.
 
 ## Atlas settings you must check
